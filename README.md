@@ -18,4 +18,4 @@ A Telegram bot for organizing football games with your friends.
 - `/create_event DD/MM/YYYY HH:MM max_players [description]`
 - `/events` - Show upcoming events
 - `/mystatus` - Check your registrations
-- `/randomize_teams event_id` - Create random teams
+- `/randomize_teams event_id` - Create random teams# the5quad-bot
