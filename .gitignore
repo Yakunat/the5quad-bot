@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.env
+football_bot.db
+.DS_Store
+*.log
