@@ -84,16 +84,24 @@ class FootballDatabase:
             with sqlite3.connect(self.db_name) as conn:
                 cursor = conn.cursor()
                 
-                # Check if user is already registered
+                # Check if user is already actively registered
                 cursor.execute('''
                     SELECT id FROM registrations 
                     WHERE event_id = ? AND user_id = ? AND status = 'active'
                 ''', (event_id, user_id))
                 
                 if cursor.fetchone():
-                    return False  # Already registered
+                    return False  # Already actively registered
                 
-                # Count current registrations
+                # Check if user has a cancelled registration (they left before)
+                cursor.execute('''
+                    SELECT id FROM registrations 
+                    WHERE event_id = ? AND user_id = ? AND status = 'cancelled'
+                ''', (event_id, user_id))
+                
+                cancelled_registration = cursor.fetchone()
+                
+                # Count current active registrations
                 cursor.execute('''
                     SELECT COUNT(*) FROM registrations 
                     WHERE event_id = ? AND registration_type = 'main' AND status = 'active'
@@ -107,17 +115,26 @@ class FootballDatabase:
                 # Determine registration type
                 reg_type = 'main' if main_count < max_players else 'reserve'
                 
-                # Register the user
-                cursor.execute('''
-                    INSERT INTO registrations (event_id, user_id, username, first_name, registration_type)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (event_id, user_id, username, first_name, reg_type))
+                if cancelled_registration:
+                    # Reactivate existing cancelled registration
+                    cursor.execute('''
+                        UPDATE registrations 
+                        SET status = 'active', registration_type = ?, registered_at = CURRENT_TIMESTAMP,
+                            username = ?, first_name = ?
+                        WHERE event_id = ? AND user_id = ? AND status = 'cancelled'
+                    ''', (reg_type, username, first_name, event_id, user_id))
+                else:
+                    # Create new registration
+                    cursor.execute('''
+                        INSERT INTO registrations (event_id, user_id, username, first_name, registration_type)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (event_id, user_id, username, first_name, reg_type))
                 
                 conn.commit()
                 return True
                 
         except sqlite3.IntegrityError:
-            return False  # User already registered
+            return False  # Unexpected database error
     
     def unregister_user(self, event_id: int, user_id: int) -> bool:
         """Unregister a user from an event. Returns True if successful."""
